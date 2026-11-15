@@ -4,6 +4,14 @@ import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
+import {
+  useFonts,
+  BricolageGrotesque_600SemiBold,
+  BricolageGrotesque_800ExtraBold,
+} from '@expo-google-fonts/bricolage-grotesque';
+import { DMSans_400Regular, DMSans_500Medium, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
+import { DMMono_400Regular, DMMono_500Medium } from '@expo-google-fonts/dm-mono';
+
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { ExpenseProvider } from './src/context/ExpenseContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
@@ -14,6 +22,16 @@ import { AppNavigator } from './src/navigation/AppNavigator';
  */
 function MainApp() {
   const { theme, isDark, isLoaded } = useTheme();
+
+    const [fontsLoaded] = useFonts({
+    BricolageGrotesque_600SemiBold,
+    BricolageGrotesque_800ExtraBold,
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_700Bold,
+    DMMono_400Regular,
+    DMMono_500Medium,
+  });
 
   // Gestión del ciclo de vida (Mapeo de la rúbrica: onResume, onPause, onStop)
   useEffect(() => {
@@ -34,10 +52,10 @@ function MainApp() {
     };
   }, []);
 
-  if (!isLoaded) {
+    if (!isLoaded || !fontsLoaded) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#090d16' }}>
-        <ActivityIndicator size="large" color="#10b981" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#14120E' }}>
+        <ActivityIndicator size="large" color="#F5B82E" />
       </View>
     );
   }

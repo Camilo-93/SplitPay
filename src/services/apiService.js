@@ -41,7 +41,7 @@ export const apiService = {
           name,
           email: `${name.toLowerCase().replace(' ', '.')}@correo.com`,
           phone: `9${Math.floor(10000000 + Math.random() * 90000000)}`,
-          avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=10b981&color=fff`,
+          avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=F5B82E&color=16140F`,
         };
       });
     }
@@ -56,9 +56,9 @@ export const apiService = {
       if (users && users.length > 0) {
         return users[0].avatarUrl;
       }
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(nameHint)}&background=3b82f6&color=fff`;
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(nameHint)}&background=F5B82E&color=16140F`;
     } catch (error) {
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(nameHint)}&background=3b82f6&color=fff`;
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(nameHint)}&background=F5B82E&color=16140F`;
     }
   },
 };

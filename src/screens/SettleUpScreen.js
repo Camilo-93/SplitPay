@@ -11,16 +11,22 @@ import {
   Alert,
   Modal,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useExpenseContext } from '../context/ExpenseContext';
 import { useExpenses } from '../hooks/useExpenses';
 import { useBalances } from '../hooks/useBalances';
 import { formatCurrency } from '../utils/currencyFormatter';
+import { Avatar } from '../components/ui/Avatar';
+import { Money } from '../components/ui/Money';
+import { Ticket, Stamp } from '../components/ui/Ticket';
+import { withAlpha } from '../utils/palette';
 
+// Métodos de pago soportados (Perú): billeteras digitales y efectivo
 const PAYMENT_METHODS = [
-  { id: 'Yape', name: 'Yape 💜', color: '#742284', bgColor: '#f3e8ff' },
-  { id: 'Plin', name: 'Plin 💙', color: '#00a4e4', bgColor: '#e0f2fe' },
-  { id: 'Efectivo', name: 'Efectivo 💵', color: '#059669', bgColor: '#d1fae5' },
+  { id: 'Yape', name: 'Yape', color: '#742284', letter: 'Y' },
+  { id: 'Plin', name: 'Plin', color: '#00A9CE', letter: 'P' },
+  { id: 'Efectivo', name: 'Efectivo', color: '#2E7D4F', icon: 'cash-outline' },
 ];
 
 export const SettleUpScreen = ({ route, navigation }) => {
@@ -64,7 +70,7 @@ export const SettleUpScreen = ({ route, navigation }) => {
 
       setModalVisible(false);
       Alert.alert(
-        '¡Deuda Saldada! 🎉',
+        '¡Deuda saldada!',
         `Se registró la transferencia de ${formatCurrency(selectedSettlement.amount)} de ${
           selectedSettlement.from.name
         } para ${selectedSettlement.to.name} vía ${selectedMethod}.`
@@ -74,75 +80,66 @@ export const SettleUpScreen = ({ route, navigation }) => {
     }
   };
 
-  const renderSettlementItem = ({ item }) => {
-    const isCurrentUserFrom = item.from.id === currentUser.id;
-    const isCurrentUserTo = item.to.id === currentUser.id;
+  const renderSettlementItem = ({ item, index }) => {
+    const c = theme.colors;
+    const f = theme.fonts;
+    const fromMe = item.from.id === currentUser.id;
+    const toMe = item.to.id === currentUser.id;
+    const tone = fromMe ? c.danger : toMe ? c.success : c.text;
+    const dash = { flex: 1, height: 0, borderTopWidth: 1.5, borderStyle: 'dashed', borderColor: c.border };
 
     return (
-      <View
-        style={[
-          styles.settlementCard,
-          {
-            backgroundColor: theme.colors.surface,
-            borderColor: isCurrentUserFrom
-              ? theme.colors.danger
-              : isCurrentUserTo
-              ? theme.colors.success
-              : theme.colors.border,
-          },
-        ]}
-      >
-        {/* Avatares y flujo de transferencia */}
-        <View style={styles.transferFlowRow}>
-          <View style={styles.personCol}>
-            <Image
-              source={{
-                uri:
-                  item.from.avatarUrl ||
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(item.from.name)}&background=ef4444&color=fff`,
-              }}
-              style={styles.personAvatar}
-            />
-            <Text numberOfLines={1} style={[styles.personName, { color: theme.colors.text }]}>
-              {item.from.name} {isCurrentUserFrom ? '(Tú)' : ''}
-            </Text>
-            <Text style={[styles.roleBadge, { color: theme.colors.danger }]}>Deudor</Text>
-          </View>
+      <View style={{ marginVertical: 7 }}>
+        <Ticket
+          top={
+            <>
+              <View style={sx.topRow}>
+                <Text style={[sx.caps, { color: c.textMuted, fontFamily: f.monoMedium }]}>
+                  PAGO SUGERIDO {String(index + 1).padStart(2, '0')}
+                </Text>
+                {fromMe ? <Stamp label="TÚ PAGAS" color={c.danger} /> : null}
+                {toMe ? <Stamp label="TE PAGAN" color={c.success} /> : null}
+              </View>
 
-          <View style={styles.arrowCol}>
-            <Text style={[styles.amountPill, { color: theme.colors.primary }]}>
-              {formatCurrency(item.amount)}
-            </Text>
-            <Text style={[styles.arrowSymbol, { color: theme.colors.primary }]}>➔</Text>
-            <Text style={[styles.transferLabel, { color: theme.colors.textMuted }]}>transfiere a</Text>
-          </View>
+              <View style={sx.flowRow}>
+                <View style={sx.personCol}>
+                  <Avatar name={item.from.name} uri={item.from.avatarUrl} size={54} />
+                  <Text numberOfLines={1} style={[sx.personName, { color: c.text, fontFamily: f.bodyBold }]}>
+                    {item.from.name.split(' ')[0]}
+                  </Text>
+                </View>
 
-          <View style={styles.personCol}>
-            <Image
-              source={{
-                uri:
-                  item.to.avatarUrl ||
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(item.to.name)}&background=10b981&color=fff`,
-              }}
-              style={styles.personAvatar}
-            />
-            <Text numberOfLines={1} style={[styles.personName, { color: theme.colors.text }]}>
-              {item.to.name} {isCurrentUserTo ? '(Tú)' : ''}
-            </Text>
-            <Text style={[styles.roleBadge, { color: theme.colors.success }]}>Acreedor</Text>
-          </View>
-        </View>
+                <View style={sx.arrowCol}>
+                  <View style={dash} />
+                  <Ionicons name="arrow-forward" size={18} color={tone} style={{ marginHorizontal: 4 }} />
+                  <View style={dash} />
+                </View>
 
-        {/* Botón de acción para saldar */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => handleOpenSettleModal(item)}
-          style={[styles.settleActionBtn, { backgroundColor: theme.colors.primary }]}
-        >
-          <Text style={styles.settleActionBtnText}>
-            ✓ Registrar Pago / Saldar Cuentas
-          </Text>
-        </TouchableOpacity>
+                <View style={sx.personCol}>
+                  <Avatar name={item.to.name} uri={item.to.avatarUrl} size={54} />
+                  <Text numberOfLines={1} style={[sx.personName, { color: c.text, fontFamily: f.bodyBold }]}>
+                    {item.to.name.split(' ')[0]}
+                  </Text>
+                </View>
+              </View>
+            </>
+          }
+          bottom={
+            <>
+              <View style={{ alignItems: 'center', marginBottom: 14 }}>
+                <Money amount={item.amount} size={38} color={tone} />
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => handleOpenSettleModal(item)}
+                style={[sx.payBtn, { backgroundColor: c.primary }]}
+              >
+                <Ionicons name="checkmark-circle-outline" size={20} color={c.onPrimary} />
+                <Text style={{ color: c.onPrimary, fontFamily: f.bodyBold, fontSize: 15 }}>Registrar pago</Text>
+              </TouchableOpacity>
+            </>
+          }
+        />
       </View>
     );
   };
@@ -153,13 +150,17 @@ export const SettleUpScreen = ({ route, navigation }) => {
 
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={[styles.backArrow, { color: theme.colors.text }]}>‹</Text>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          accessibilityLabel="Volver"
+          style={[sx.ghost, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}
+        >
+          <Ionicons name="chevron-back" size={20} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-          Liquidación de Deudas
+        <Text style={[styles.headerTitle, { color: theme.colors.text, fontFamily: theme.fonts.display, fontSize: 20 }]}>
+          Liquidar
         </Text>
-        <View style={{ width: 32 }} />
+        <View style={{ width: 44 }} />
       </View>
 
       <FlatList
@@ -168,21 +169,23 @@ export const SettleUpScreen = ({ route, navigation }) => {
         renderItem={renderSettlementItem}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={() => (
-          <View style={styles.explanationBox}>
-            <Text style={[styles.groupTag, { color: theme.colors.primary }]}>
-              {group.icon} {group.name}
+          <View style={{ paddingHorizontal: 4, paddingTop: 6, paddingBottom: 10 }}>
+            <Text style={[sx.caps, { color: theme.colors.textMuted, fontFamily: theme.fonts.monoMedium }]}>
+              {group.name.toUpperCase()}
             </Text>
-            <Text style={[styles.explanationTitle, { color: theme.colors.text }]}>
-              Transferencias Óptimas Sugeridas
-            </Text>
-            <Text style={[styles.explanationDesc, { color: theme.colors.textSecondary }]}>
-              El algoritmo calcula la menor cantidad de transacciones necesarias para que nadie deba dinero en el grupo.
-            </Text>
+            <View style={sx.bigRow}>
+              <Text style={[sx.bigNumber, { color: theme.colors.primary, fontFamily: theme.fonts.display }]}>
+                {suggestedSettlements.length}
+              </Text>
+              <Text style={[sx.bigText, { color: theme.colors.text, fontFamily: theme.fonts.displayMedium }]}>
+                {suggestedSettlements.length === 1 ? 'transferencia basta' : 'transferencias bastan'} para dejar todo en cero.
+              </Text>
+            </View>
           </View>
         )}
         ListEmptyComponent={() => (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>🎉</Text>
+            <Ionicons name="checkmark-done-circle-outline" size={56} color={theme.colors.success} />
             <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
               ¡Todas las cuentas están al día!
             </Text>
@@ -211,9 +214,7 @@ export const SettleUpScreen = ({ route, navigation }) => {
                 <Text style={[styles.modalText, { color: theme.colors.textSecondary }]}>
                   Monto a saldar:
                 </Text>
-                <Text style={[styles.modalAmount, { color: theme.colors.primary }]}>
-                  {formatCurrency(selectedSettlement.amount)}
-                </Text>
+                <Money amount={selectedSettlement.amount} size={40} color={theme.colors.text} />
                 <Text style={[styles.modalSub, { color: theme.colors.text }]}>
                   De <Text style={{ fontWeight: '800' }}>{selectedSettlement.from.name}</Text> para{' '}
                   <Text style={{ fontWeight: '800' }}>{selectedSettlement.to.name}</Text>
@@ -225,30 +226,33 @@ export const SettleUpScreen = ({ route, navigation }) => {
               Selecciona el método de pago:
             </Text>
 
-            <View style={styles.methodsRow}>
-              {PAYMENT_METHODS.map((method) => {
-                const isSelected = selectedMethod === method.id;
+            <View style={{ gap: 8, marginBottom: 18 }}>
+              {PAYMENT_METHODS.map((m) => {
+                const sel = selectedMethod === m.id;
                 return (
                   <TouchableOpacity
-                    key={method.id}
-                    onPress={() => setSelectedMethod(method.id)}
+                    key={m.id}
+                    onPress={() => setSelectedMethod(m.id)}
                     style={[
-                      styles.methodCard,
+                      sx.method,
                       {
-                        backgroundColor: isSelected ? method.bgColor : theme.colors.surfaceSecondary,
-                        borderColor: isSelected ? method.color : 'transparent',
+                        borderWidth: sel ? 2 : 1,
+                        borderColor: sel ? m.color : theme.colors.border,
+                        backgroundColor: sel ? withAlpha(m.color, 0.1) : 'transparent',
                       },
                     ]}
                   >
-                    <Text
-                      style={[
-                        styles.methodName,
-                        { color: isSelected ? method.color : theme.colors.text },
-                        isSelected && { fontWeight: '800' },
-                      ]}
-                    >
-                      {method.name}
+                    <View style={[sx.methodMark, { backgroundColor: m.color }]}>
+                      {m.icon ? (
+                        <Ionicons name={m.icon} size={19} color="#fff" />
+                      ) : (
+                        <Text style={{ color: '#fff', fontFamily: theme.fonts.display, fontSize: 17 }}>{m.letter}</Text>
+                      )}
+                    </View>
+                    <Text style={{ flex: 1, color: theme.colors.text, fontFamily: theme.fonts.bodyBold, fontSize: 15 }}>
+                      {m.name}
                     </Text>
+                    {sel ? <Ionicons name="checkmark-circle" size={22} color={m.color} /> : null}
                   </TouchableOpacity>
                 );
               })}
@@ -268,7 +272,7 @@ export const SettleUpScreen = ({ route, navigation }) => {
                 onPress={handleConfirmSettlement}
                 style={[styles.modalBtnConfirm, { backgroundColor: theme.colors.primary }]}
               >
-                <Text style={styles.modalBtnConfirmText}>Marcar Saldado</Text>
+                <Text style={[styles.modalBtnConfirmText, { color: theme.colors.onPrimary }]}>Marcar saldado</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -499,4 +503,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 40,
   },
+});
+
+// Estilos del rediseño (tickets de transferencia, métodos de pago)
+const sx = StyleSheet.create({
+  ghost: { width: 44, height: 44, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  caps: { fontSize: 10.5, letterSpacing: 1.4 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 30, marginBottom: 14 },
+  flowRow: { flexDirection: 'row', alignItems: 'center' },
+  personCol: { width: 82, alignItems: 'center' },
+  personName: { fontSize: 13, marginTop: 6 },
+  arrowCol: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  payBtn: { height: 48, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  bigRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: 4 },
+  bigNumber: { fontSize: 76, lineHeight: 80, letterSpacing: -3 },
+  bigText: { fontSize: 18, lineHeight: 22, flex: 1, paddingBottom: 8 },
+  method: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12 },
+  methodMark: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
 });

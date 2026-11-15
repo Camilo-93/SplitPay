@@ -1,93 +1,70 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { BalanceBadge } from './BalanceBadge';
+import { Avatar } from './ui/Avatar';
 import { useBalances } from '../hooks/useBalances';
+import { groupColor, withAlpha } from '../utils/palette';
+import { formatCurrency } from '../utils/currencyFormatter';
 
 /**
  * Componente GroupCard
- * Renderiza la tarjeta de un grupo en la lista principal del Dashboard
+ * Ficha de un grupo en la lista principal del Dashboard, con tira de color lateral.
  */
 export const GroupCard = ({ group, expenses = [], onPress, currentUserId }) => {
   const { theme } = useTheme();
+  const { colors: c, fonts: f } = theme;
   const { userNetBalance, totalGroupSpent } = useBalances(group, expenses, currentUserId);
 
-  const memberCount = group.members ? group.members.length : 0;
-  const previewMembers = group.members ? group.members.slice(0, 4) : [];
+  const members = group.members || [];
+  const count = members.length;
+  const tone = groupColor(group.id);
 
   return (
     <TouchableOpacity
-      activeOpacity={0.75}
+      activeOpacity={0.8}
       onPress={onPress}
-      style={[
-        styles.card,
-        {
-          backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.border,
-          shadowColor: theme.colors.cardShadow,
-        },
-      ]}
+      style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}
     >
-      <View style={styles.topRow}>
-        <View style={[styles.iconBox, { backgroundColor: theme.colors.primaryBg }]}>
-          <Text style={styles.groupIcon}>{group.icon || '👥'}</Text>
+      <View style={[styles.stripe, { backgroundColor: tone }]} />
+
+      <View style={styles.body}>
+        <View style={styles.topRow}>
+          <View style={[styles.iconBox, { backgroundColor: withAlpha(tone, 0.16) }]}>
+            <Text style={styles.groupIcon}>{group.icon || '👥'}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text numberOfLines={1} style={[styles.name, { color: c.text, fontFamily: f.display }]}>
+              {group.name}
+            </Text>
+            <Text numberOfLines={1} style={[styles.meta, { color: c.textMuted, fontFamily: f.mono }]}>
+              {count} integrantes · {formatCurrency(totalGroupSpent)}
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.titleArea}>
-          <Text
-            numberOfLines={1}
-            style={[styles.groupName, { color: theme.colors.text }]}
-          >
-            {group.name}
-          </Text>
-          <Text
-            numberOfLines={1}
-            style={[styles.description, { color: theme.colors.textSecondary }]}
-          >
-            {group.description || `${memberCount} integrantes`}
-          </Text>
+        <View style={styles.bottomRow}>
+          <View style={styles.stack}>
+            {members.slice(0, 4).map((m, i) => (
+              <Avatar
+                key={m.id || i}
+                name={m.name}
+                uri={m.avatarUrl}
+                size={28}
+                ring={c.surface}
+                style={{ marginLeft: i === 0 ? 0 : -8 }}
+              />
+            ))}
+            {count > 4 ? (
+              <View style={[styles.more, { backgroundColor: c.surfaceSecondary, borderColor: c.surface }]}>
+                <Text style={{ color: c.textSecondary, fontFamily: f.monoMedium, fontSize: 10 }}>
+                  +{count - 4}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          <BalanceBadge balance={userNetBalance} compact />
         </View>
-      </View>
-
-      {/* Fila inferior: Avatares de integrantes y Badge de balance */}
-      <View style={styles.bottomRow}>
-        <View style={styles.avatarStack}>
-          {previewMembers.map((m, idx) => (
-            <Image
-              key={m.id || idx}
-              source={{
-                uri:
-                  m.avatarUrl ||
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=10b981&color=fff`,
-              }}
-              style={[
-                styles.avatar,
-                {
-                  marginLeft: idx === 0 ? 0 : -10,
-                  borderColor: theme.colors.surface,
-                },
-              ]}
-            />
-          ))}
-          {memberCount > 4 ? (
-            <View
-              style={[
-                styles.moreAvatar,
-                {
-                  marginLeft: -10,
-                  backgroundColor: theme.colors.surfaceSecondary,
-                  borderColor: theme.colors.surface,
-                },
-              ]}
-            >
-              <Text style={[styles.moreText, { color: theme.colors.textSecondary }]}>
-                +{memberCount - 4}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-
-        <BalanceBadge balance={userNetBalance} compact />
       </View>
     </TouchableOpacity>
   );
@@ -95,71 +72,29 @@ export const GroupCard = ({ group, expenses = [], onPress, currentUserId }) => {
 
 const styles = StyleSheet.create({
   card: {
+    flexDirection: 'row',
     marginHorizontal: 16,
-    marginVertical: 7,
-    padding: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  iconBox: {
-    width: 48,
-    height: 48,
+    marginVertical: 6,
     borderRadius: 14,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  stripe: { width: 5 },
+  body: { flex: 1, padding: 14 },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+  iconBox: { width: 46, height: 46, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  groupIcon: { fontSize: 23 },
+  name: { fontSize: 19, letterSpacing: -0.3, marginBottom: 2 },
+  meta: { fontSize: 11 },
+  bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  stack: { flexDirection: 'row', alignItems: 'center' },
+  more: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    borderWidth: 2,
+    marginLeft: -8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
-  },
-  groupIcon: {
-    fontSize: 24,
-  },
-  titleArea: {
-    flex: 1,
-  },
-  groupName: {
-    fontSize: 17,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  description: {
-    fontSize: 13,
-  },
-  bottomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(150, 150, 150, 0.15)',
-  },
-  avatarStack: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    borderWidth: 2,
-  },
-  moreAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  moreText: {
-    fontSize: 10,
-    fontWeight: '700',
   },
 });

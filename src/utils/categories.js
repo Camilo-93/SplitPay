@@ -1,54 +1,30 @@
+import { withAlpha } from './palette';
+
 /**
- * Definición centralizada de categorías, íconos y colores para SplitPay
+ * Categorías de gastos de SplitPay.
+ * `icon` (emoji) se conserva por compatibilidad con datos guardados;
+ * la interfaz usa `vectorIcon` (Ionicons) sobre una ficha teñida con `color`.
  */
+const make = (id, name, icon, vectorIcon, color, description) => ({
+  id,
+  name,
+  icon,
+  vectorIcon,
+  color,
+  bgColor: withAlpha(color, 0.14), // transparente: se ve bien en modo claro y oscuro
+  description,
+});
 
 export const CATEGORIES = {
-  comida: {
-    id: 'comida',
-    name: 'Comida',
-    icon: '🍕',
-    vectorIcon: 'fast-food',
-    color: '#f97316', // Orange
-    bgColor: '#ffedd5',
-    description: 'Restaurantes, delivery, compras de súper, snacks',
-  },
-  transporte: {
-    id: 'transporte',
-    name: 'Transporte',
-    icon: '🚕',
-    vectorIcon: 'car',
-    color: '#3b82f6', // Blue
-    bgColor: '#dbeafe',
-    description: 'Taxis, gasolina, pasajes, peajes',
-  },
-  casa: {
-    id: 'casa',
-    name: 'Casa',
-    icon: '🏠',
-    vectorIcon: 'home',
-    color: '#10b981', // Emerald / Green
-    bgColor: '#d1fae5',
-    description: 'Alquiler, servicios de luz/agua/internet, artículos de hogar',
-  },
-  ocio: {
-    id: 'ocio',
-    name: 'Ocio',
-    icon: '🍻',
-    vectorIcon: 'beer',
-    color: '#a855f7', // Purple
-    bgColor: '#f3e8ff',
-    description: 'Salidas, cine, juegos, celebraciones y eventos',
-  },
+  comida: make('comida', 'Comida', '🍕', 'restaurant', '#F2501F', 'Restaurantes, delivery, súper, snacks'),
+  transporte: make('transporte', 'Transporte', '🚕', 'car', '#1E6BFF', 'Taxis, gasolina, pasajes, peajes'),
+  casa: make('casa', 'Casa', '🏠', 'home', '#C77700', 'Alquiler, luz, agua, internet, hogar'),
+  ocio: make('ocio', 'Ocio', '🍻', 'beer', '#9B3DFF', 'Salidas, cine, juegos, celebraciones'),
 };
 
 export const CATEGORY_LIST = Object.values(CATEGORIES);
 
-/**
- * Obtiene la categoría por ID con fallback a 'comida'
- * @param {string} id 
- */
 export const getCategoryById = (id) => {
   if (!id) return CATEGORIES.comida;
-  const key = id.toLowerCase();
-  return CATEGORIES[key] || CATEGORIES.comida;
+  return CATEGORIES[String(id).toLowerCase()] || CATEGORIES.comida;
 };

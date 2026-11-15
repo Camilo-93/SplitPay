@@ -19,7 +19,7 @@ export const CURRENT_USER = {
 const INITIAL_GROUPS = [
   {
     id: 'grp_depa_01',
-    name: 'Depa Universitario 🏢',
+    name: 'Depa Universitario ',
     description: 'Gastos de convivencia, servicios y compras del departamento',
     icon: '🏢',
     createdAt: new Date(Date.now() - 15 * 86400000).toISOString(),
@@ -43,7 +43,7 @@ const INITIAL_GROUPS = [
   },
   {
     id: 'grp_viaje_02',
-    name: 'Viaje de Fin de Ciclo 🏖️',
+    name: 'Viaje de Fin de Ciclo ',
     description: 'Cusco / Máncora - Hospedaje, comida y tours',
     icon: '🏖️',
     createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
@@ -71,7 +71,7 @@ const INITIAL_GROUPS = [
   },
   {
     id: 'grp_pichanga_03',
-    name: 'Pichanga de los Viernes ⚽',
+    name: 'Pichanga de los Viernes ',
     description: 'Canchita sintética, hidratación y tercer tiempo',
     icon: '⚽',
     createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),

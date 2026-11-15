@@ -1,165 +1,74 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { getCategoryById } from '../utils/categories';
-import { formatCurrency } from '../utils/currencyFormatter';
+import { CategoryIcon } from './ui/CategoryIcon';
+import { Money } from './ui/Money';
+import { withAlpha } from '../utils/palette';
 
 /**
  * Componente ExpenseItem
- * Renderiza una fila de gasto dentro del historial cronológico
+ * Fila de gasto del historial, con aspecto de renglón de boleta.
  */
-export const ExpenseItem = ({ expense, members = [], onPress, onDelete }) => {
+export const ExpenseItem = ({ expense, members = [], onPress }) => {
   const { theme } = useTheme();
+  const { colors: c, fonts: f } = theme;
   const category = getCategoryById(expense.category);
-
-  // Encontrar el nombre del pagador
   const payer = members.find((m) => m.id === expense.paidById);
-  const payerName = payer ? payer.name : 'Alguien';
-
-  const dateObj = new Date(expense.date);
-  const dateFormatted = isNaN(dateObj.getTime())
-    ? 'Reciente'
-    : dateObj.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' });
-
   const isSettlement = expense.isSettlement;
+
+  const d = new Date(expense.date);
+  const date = isNaN(d.getTime())
+    ? 'reciente'
+    : d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }).replace('.', '');
 
   return (
     <TouchableOpacity
       activeOpacity={0.7}
       onPress={onPress}
-      style={[
-        styles.container,
-        {
-          backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.border,
-        },
-      ]}
+      style={[styles.row, { borderBottomColor: c.border }]}
     >
-      {/* Icono de categoría */}
-      <View
-        style={[
-          styles.iconContainer,
-          {
-            backgroundColor: isSettlement ? theme.colors.successBg : category.bgColor,
-          },
-        ]}
-      >
-        <Text style={styles.iconEmoji}>{isSettlement ? '🤝' : category.icon}</Text>
+      {isSettlement ? (
+        <View style={[styles.settleIcon, { backgroundColor: withAlpha(c.success, 0.14) }]}>
+          <Ionicons name="swap-horizontal" size={22} color={c.success} />
+        </View>
+      ) : (
+        <CategoryIcon category={category} size={44} />
+      )}
+
+      <View style={{ flex: 1 }}>
+        <Text numberOfLines={1} style={[styles.title, { color: c.text, fontFamily: f.bodyBold }]}>
+          {expense.description}
+        </Text>
+        <View style={styles.metaRow}>
+          <Text style={[styles.meta, { color: c.textSecondary, fontFamily: f.body }]}>
+            {isSettlement ? 'Liquidación' : `Pagó ${payer ? payer.name.split(' ')[0] : 'alguien'}`}
+          </Text>
+          <Text style={[styles.meta, { color: c.textMuted, fontFamily: f.mono }]}>· {date}</Text>
+          {expense.receiptImage ? <Ionicons name="attach" size={14} color={c.textMuted} /> : null}
+          {expense.location && expense.location.address ? (
+            <Ionicons name="location-outline" size={13} color={c.textMuted} />
+          ) : null}
+        </View>
       </View>
 
-      {/* Información del gasto */}
-      <View style={styles.infoContainer}>
-        <View style={styles.headerRow}>
-          <Text
-            numberOfLines={1}
-            style={[styles.description, { color: theme.colors.text }]}
-          >
-            {expense.description}
-          </Text>
-          <Text style={[styles.amount, { color: theme.colors.text }]}>
-            {formatCurrency(expense.amount)}
-          </Text>
-        </View>
-
-        <View style={styles.footerRow}>
-          <Text style={[styles.payerText, { color: theme.colors.textSecondary }]}>
-            {isSettlement ? 'Liquidación saldada' : `Pagó ${payerName}`}
-          </Text>
-          
-          <View style={styles.metaRow}>
-            {expense.receiptImage ? (
-              <Text style={[styles.receiptTag, { color: theme.colors.primary }]}>
-                📎 Recibo
-              </Text>
-            ) : null}
-            <Text style={[styles.dateText, { color: theme.colors.textMuted }]}>
-              {dateFormatted}
-            </Text>
-          </View>
-        </View>
-
-        {expense.location && expense.location.address ? (
-          <Text
-            numberOfLines={1}
-            style={[styles.locationText, { color: theme.colors.textMuted }]}
-          >
-            📍 {expense.location.address}
-          </Text>
-        ) : null}
-      </View>
+      <Money amount={expense.amount} size={19} color={isSettlement ? c.success : c.text} />
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
+    gap: 12,
+    paddingVertical: 13,
     marginHorizontal: 16,
-    marginVertical: 5,
-    borderRadius: 16,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  iconEmoji: {
-    fontSize: 24,
-  },
-  infoContainer: {
-    flex: 1,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  description: {
-    fontSize: 15,
-    fontWeight: '700',
-    flex: 1,
-    marginRight: 8,
-  },
-  amount: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  footerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  payerText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  receiptTag: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  dateText: {
-    fontSize: 12,
-    fontWeight: '400',
-  },
-  locationText: {
-    fontSize: 11,
-    marginTop: 4,
-  },
+  settleIcon: { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 15, marginBottom: 3 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  meta: { fontSize: 12 },
 });

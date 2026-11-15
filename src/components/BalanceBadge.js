@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { formatCurrency } from '../utils/currencyFormatter';
+import { withAlpha } from '../utils/palette';
 
 /**
  * Componente BalanceBadge
@@ -12,74 +13,61 @@ import { formatCurrency } from '../utils/currencyFormatter';
  */
 export const BalanceBadge = ({ balance = 0, compact = false, showLabel = true }) => {
   const { theme } = useTheme();
-  const numericBalance = Number(balance) || 0;
-  const rounded = Math.round(numericBalance * 100) / 100;
+  const { colors: c, fonts: f } = theme;
+  const rounded = Math.round((Number(balance) || 0) * 100) / 100;
 
+  let tone = c.textMuted;
+  let label = 'al día';
+  let prefix = '';
   if (rounded > 0.01) {
-    return (
-      <View
-        style={[
-          styles.badge,
-          { backgroundColor: theme.colors.successBg },
-          compact && styles.compactBadge,
-        ]}
-      >
-        <Text style={[styles.amount, { color: theme.colors.success }]}>
-          {showLabel ? 'Te deben ' : '+'}
-          {formatCurrency(rounded)}
-        </Text>
-      </View>
-    );
+    tone = c.success;
+    label = 'te deben';
+    prefix = '+';
+  } else if (rounded < -0.01) {
+    tone = c.danger;
+    label = 'debes';
+    prefix = '−';
   }
-
-  if (rounded < -0.01) {
-    return (
-      <View
-        style={[
-          styles.badge,
-          { backgroundColor: theme.colors.dangerBg },
-          compact && styles.compactBadge,
-        ]}
-      >
-        <Text style={[styles.amount, { color: theme.colors.danger }]}>
-          {showLabel ? 'Debes ' : '-'}
-          {formatCurrency(Math.abs(rounded))}
-        </Text>
-      </View>
-    );
-  }
+  const settled = Math.abs(rounded) <= 0.01;
 
   return (
     <View
       style={[
-        styles.badge,
-        { backgroundColor: theme.colors.surfaceSecondary },
-        compact && styles.compactBadge,
+        styles.wrap,
+        {
+          backgroundColor: settled ? 'transparent' : withAlpha(tone, 0.12),
+          borderColor: settled ? c.border : withAlpha(tone, 0.35),
+        },
+        compact && styles.compact,
       ]}
     >
-      <Text style={[styles.amount, { color: theme.colors.textMuted }]}>
-        Cuenta equilibrada (S/. 0.00)
-      </Text>
+      <View style={[styles.dot, { backgroundColor: tone }]} />
+      {showLabel ? (
+        <Text style={[styles.label, { color: tone, fontFamily: f.bodyMedium }]}>{label}</Text>
+      ) : null}
+      {!settled ? (
+        <Text style={[styles.amount, { color: tone, fontFamily: f.monoMedium }]}>
+          {showLabel ? '' : prefix}
+          {formatCurrency(Math.abs(rounded))}
+        </Text>
+      ) : null}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
+  wrap: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
   },
-  compactBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  amount: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
+  compact: { paddingHorizontal: 9, paddingVertical: 4 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  label: { fontSize: 12 },
+  amount: { fontSize: 13 },
 });

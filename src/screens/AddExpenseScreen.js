@@ -12,12 +12,15 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useTheme } from '../context/ThemeContext';
 import { useExpenseContext } from '../context/ExpenseContext';
 import { CATEGORY_LIST } from '../utils/categories';
 import { formatCurrency, parseCurrencyInput } from '../utils/currencyFormatter';
+import { Avatar } from '../components/ui/Avatar';
+import { CategoryIcon } from '../components/ui/CategoryIcon';
 
 export const AddExpenseScreen = ({ route, navigation }) => {
   const { groupId } = route.params;
@@ -48,6 +51,8 @@ export const AddExpenseScreen = ({ route, navigation }) => {
 
   const numericAmount = parseCurrencyInput(amountInput);
   const splitCount = splitWithIds.length;
+  const amountChars = Math.max(4, (amountInput || '0.00').length);
+  const amountFont = amountChars > 9 ? 40 : amountChars > 7 ? 52 : 64;
   const perPersonShare = splitCount > 0 ? numericAmount / splitCount : 0;
 
   const toggleParticipant = (memberId) => {
@@ -227,41 +232,64 @@ export const AddExpenseScreen = ({ route, navigation }) => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
-          <Text style={[styles.closeBtnText, { color: theme.colors.text }]}>✕</Text>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          accessibilityLabel="Cerrar"
+          style={[ax.ghost, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}
+        >
+          <Ionicons name="close" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Registrar Nuevo Gasto</Text>
-        <View style={{ width: 32 }} />
+        <Text style={[styles.headerTitle, { color: theme.colors.text, fontFamily: theme.fonts.display, fontSize: 20 }]}>
+          Nuevo gasto
+        </Text>
+        <View style={{ width: 44 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Grupo destino */}
         <View style={[styles.groupBanner, { backgroundColor: theme.colors.surfaceSecondary }]}>
           <Text style={styles.groupBannerIcon}>{group.icon || '👥'}</Text>
-          <Text style={[styles.groupBannerName, { color: theme.colors.text }]}>
-            En: {group.name}
+          <Text style={[styles.groupBannerName, { color: theme.colors.text, fontFamily: theme.fonts.bodyBold }]}>
+            En {group.name}
           </Text>
         </View>
 
-        {/* Input Monto Principal */}
-        <View style={[styles.amountCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.currencyPrefix, { color: theme.colors.primary }]}>S/.</Text>
-          <TextInput
-            placeholder="0.00"
-            placeholderTextColor={theme.colors.textMuted}
-            keyboardType="decimal-pad"
-            value={amountInput}
-            onChangeText={setAmountInput}
-            style={[styles.amountInput, { color: theme.colors.text }]}
-          />
+        {/* Monto principal: centrado, el ancho se ajusta a lo que se escribe */}
+        <View style={ax.amountWrap}>
+          <Text style={[ax.caps, { color: theme.colors.textMuted, fontFamily: theme.fonts.monoMedium }]}>
+            ¿CUÁNTO FUE?
+          </Text>
+          <View style={ax.amountRow}>
+            <Text style={[ax.prefix, { fontSize: amountFont * 0.42, color: theme.colors.primary, fontFamily: theme.fonts.monoMedium }]}>
+              S/
+            </Text>
+            <TextInput
+              placeholder="0.00"
+              placeholderTextColor={theme.colors.border}
+              keyboardType="decimal-pad"
+              value={amountInput}
+              onChangeText={setAmountInput}
+              accessibilityLabel="Monto del gasto en soles"
+              style={[
+                ax.amountInput,
+                {
+                  color: theme.colors.text,
+                  fontFamily: theme.fonts.display,
+                  fontSize: amountFont,
+                  width: amountChars * amountFont * 0.58 + 8,
+                },
+              ]}
+            />
+          </View>
+          <View style={[ax.amountLine, { backgroundColor: theme.colors.primary }]} />
         </View>
 
         {/* Concepto del gasto */}
         <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>
-          Concepto / Descripción *
+          Concepto
         </Text>
         <TextInput
-          placeholder="Ej. Pizza de Estudio, Taxi al aeropuerto, Compras..."
+          placeholder="Ej. Cena en El Parquecito, taxi al aeropuerto"
           placeholderTextColor={theme.colors.textMuted}
           value={description}
           onChangeText={setDescription}
@@ -292,12 +320,11 @@ export const AddExpenseScreen = ({ route, navigation }) => {
                   },
                 ]}
               >
-                <Text style={styles.categoryEmoji}>{cat.icon}</Text>
+                <CategoryIcon category={cat} size={38} />
                 <Text
                   style={[
                     styles.categoryName,
-                    { color: isSelected ? cat.color : theme.colors.text },
-                    isSelected && { fontWeight: '800' },
+                    { color: theme.colors.text, fontFamily: theme.fonts.bodyBold, marginTop: 6 },
                   ]}
                 >
                   {cat.name}
@@ -324,7 +351,7 @@ export const AddExpenseScreen = ({ route, navigation }) => {
                   },
                 ]}
               >
-                <Text style={[styles.payerChipText, { color: isPayer ? '#fff' : theme.colors.text }]}>
+                <Text style={[styles.payerChipText, { color: isPayer ? theme.colors.onPrimary : theme.colors.text, fontFamily: theme.fonts.bodyMedium }]}>
                   {member.name} {member.id === currentUser.id ? '(Tú)' : ''}
                 </Text>
               </TouchableOpacity>
@@ -359,20 +386,15 @@ export const AddExpenseScreen = ({ route, navigation }) => {
                   },
                 ]}
               >
-                <Image
-                  source={{
-                    uri:
-                      member.avatarUrl ||
-                      `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=10b981&color=fff`,
-                  }}
-                  style={styles.participantAvatar}
-                />
+                <Avatar name={member.name} uri={member.avatarUrl} size={36} />
                 <Text style={[styles.participantName, { color: theme.colors.text }]}>
                   {member.name} {member.id === currentUser.id ? '(Tú)' : ''}
                 </Text>
-                <Text style={[styles.checkIndicator, { color: isIncluded ? theme.colors.primary : theme.colors.textMuted }]}>
-                  {isIncluded ? '✓' : '○'}
-                </Text>
+                <Ionicons
+                  name={isIncluded ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={22}
+                  color={isIncluded ? theme.colors.text : theme.colors.textMuted}
+                />
               </TouchableOpacity>
             );
           })}
@@ -382,8 +404,8 @@ export const AddExpenseScreen = ({ route, navigation }) => {
         {numericAmount > 0 && splitCount > 0 ? (
           <View style={[styles.splitPreviewCard, { backgroundColor: theme.colors.surfaceSecondary }]}>
             <Text style={[styles.splitPreviewText, { color: theme.colors.textSecondary }]}>
-              💡 Cada participante asume:{' '}
-              <Text style={{ fontWeight: '800', color: theme.colors.primary }}>
+              Cada participante asume{' '}
+              <Text style={{ fontFamily: theme.fonts.monoMedium, color: theme.colors.text }}>
                 {formatCurrency(perPersonShare)}
               </Text>
             </Text>
@@ -392,7 +414,7 @@ export const AddExpenseScreen = ({ route, navigation }) => {
 
         {/* Adjuntos: Recibo y Ubicación */}
         <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>
-          Detalles opcionales (Comprobante y GPS)
+          Comprobante y ubicación (opcional)
         </Text>
 
         <View style={styles.hardwareButtonsRow}>
@@ -400,9 +422,9 @@ export const AddExpenseScreen = ({ route, navigation }) => {
             onPress={handlePickReceipt}
             style={[styles.hardwareBtn, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
           >
-            <Text style={styles.hardwareBtnIcon}>📸</Text>
+            <Ionicons name="camera-outline" size={22} color={theme.colors.text} />
             <Text style={[styles.hardwareBtnText, { color: theme.colors.text }]}>
-              {receiptImage ? 'Cambiar Recibo' : 'Adjuntar Recibo'}
+              {receiptImage ? 'Cambiar recibo' : 'Adjuntar recibo'}
             </Text>
           </TouchableOpacity>
 
@@ -415,9 +437,9 @@ export const AddExpenseScreen = ({ route, navigation }) => {
               <ActivityIndicator color={theme.colors.primary} size="small" />
             ) : (
               <>
-                <Text style={styles.hardwareBtnIcon}>📍</Text>
+                <Ionicons name="location-outline" size={22} color={theme.colors.text} />
                 <Text style={[styles.hardwareBtnText, { color: theme.colors.text }]}>
-                  {locationData ? 'Ubicación OK' : 'Capturar GPS'}
+                  {locationData ? 'Ubicación lista' : 'Capturar GPS'}
                 </Text>
               </>
             )}
@@ -429,7 +451,7 @@ export const AddExpenseScreen = ({ route, navigation }) => {
           <View style={styles.receiptPreviewContainer}>
             <Image source={{ uri: receiptImage }} style={styles.receiptPreviewImage} />
             <TouchableOpacity onPress={() => setReceiptImage(null)} style={styles.removeReceiptBtn}>
-              <Text style={styles.removeReceiptText}>✕ Quitar</Text>
+              <Text style={styles.removeReceiptText}>Quitar</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -438,17 +460,17 @@ export const AddExpenseScreen = ({ route, navigation }) => {
         {locationData && locationData.address ? (
           <View style={[styles.locationChip, { backgroundColor: theme.colors.surfaceSecondary }]}>
             <Text style={[styles.locationChipText, { color: theme.colors.text }]}>
-              📍 {locationData.address}
+              {locationData.address}
             </Text>
             <TouchableOpacity onPress={() => setLocationData(null)}>
-              <Text style={[styles.locationRemove, { color: theme.colors.danger }]}>✕</Text>
+              <Ionicons name="close-circle" size={20} color={theme.colors.danger} />
             </TouchableOpacity>
           </View>
         ) : null}
       </ScrollView>
 
       {/* Botón Guardar */}
-      <View style={[styles.footerBar, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border }]}>
+      <View style={[styles.footerBar, { backgroundColor: theme.colors.background, borderTopColor: theme.colors.border }]}>
         <TouchableOpacity
           onPress={handleSave}
           disabled={isSubmitting}
@@ -461,9 +483,9 @@ export const AddExpenseScreen = ({ route, navigation }) => {
           ]}
         >
           {isSubmitting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={theme.colors.onPrimary} />
           ) : (
-            <Text style={styles.saveButtonText}>Guardar Gasto</Text>
+            <Text style={[styles.saveButtonText, { color: theme.colors.onPrimary, fontFamily: theme.fonts.bodyBold }]}>Guardar gasto</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -708,4 +730,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 40,
   },
+});
+
+// Estilos del rediseño (monto protagonista, botón de cerrar)
+const ax = StyleSheet.create({
+  ghost: { width: 44, height: 44, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  caps: { fontSize: 10.5, letterSpacing: 1.6 },
+  amountWrap: { alignItems: 'center', paddingVertical: 20 },
+  amountRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 6 },
+  prefix: { marginRight: 6 },
+  amountInput: { textAlign: 'center', letterSpacing: -2, padding: 0 },
+  amountLine: { width: 120, height: 3, borderRadius: 2, marginTop: 8 },
 });

@@ -12,6 +12,7 @@ import {
   Alert,
   Modal,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useExpenseContext } from '../context/ExpenseContext';
 import { useExpenses } from '../hooks/useExpenses';
@@ -21,6 +22,9 @@ import { BalanceBadge } from '../components/BalanceBadge';
 import { CATEGORY_LIST, getCategoryById } from '../utils/categories';
 import { formatCurrency } from '../utils/currencyFormatter';
 import { apiService } from '../services/apiService';
+import { Avatar } from '../components/ui/Avatar';
+import { Money } from '../components/ui/Money';
+import { groupColor, withAlpha } from '../utils/palette';
 
 export const GroupDetailScreen = ({ route, navigation }) => {
   const { groupId } = route.params;
@@ -47,7 +51,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             onPress={() => navigation.goBack()}
             style={[styles.backBtn, { backgroundColor: theme.colors.primary }]}
           >
-            <Text style={styles.backBtnText}>Volver al inicio</Text>
+            <Text style={[styles.backBtnText, { color: theme.colors.onPrimary }]}>Volver al inicio</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -84,164 +88,163 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     setSelectedExpense(null);
   };
 
-  const renderGroupHeader = () => (
-    <View style={[styles.headerCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-      <View style={styles.headerTop}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={[styles.backIconBtn, { backgroundColor: theme.colors.surfaceSecondary }]}
-        >
-          <Text style={[styles.backArrow, { color: theme.colors.text }]}>‹</Text>
-        </TouchableOpacity>
+  const renderGroupHeader = () => {
+    const c = theme.colors;
+    const f = theme.fonts;
+    const gc = groupColor(group.id);
+    const netTone =
+      userNetBalance > 0.01 ? c.success : userNetBalance < -0.01 ? c.danger : c.textMuted;
 
-        <View style={styles.groupMainInfo}>
-          <Text style={styles.groupIconBig}>{group.icon || '👥'}</Text>
-          <View style={{ flex: 1 }}>
-            <Text numberOfLines={1} style={[styles.groupTitle, { color: theme.colors.text }]}>
-              {group.name}
-            </Text>
-            <Text numberOfLines={1} style={[styles.groupDesc, { color: theme.colors.textSecondary }]}>
-              {group.description || `${group.members.length} integrantes`}
-            </Text>
+    return (
+      <View style={[hs.hero, { backgroundColor: withAlpha(gc, 0.12), borderBottomColor: c.border }]}>
+        <View style={hs.topBar}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            accessibilityLabel="Volver"
+            style={[hs.ghost, { borderColor: c.border, backgroundColor: c.surface }]}
+          >
+            <Ionicons name="chevron-back" size={20} color={c.text} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleDeleteGroup}
+            accessibilityLabel="Eliminar grupo"
+            style={[hs.ghost, { borderColor: c.border, backgroundColor: c.surface }]}
+          >
+            <Ionicons name="trash-outline" size={18} color={c.danger} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={[hs.iconTile, { backgroundColor: withAlpha(gc, 0.2) }]}>
+          <Text style={{ fontSize: 30 }}>{group.icon || '👥'}</Text>
+        </View>
+        <Text numberOfLines={2} style={[hs.title, { color: c.text, fontFamily: f.display }]}>
+          {group.name}
+        </Text>
+        <Text numberOfLines={1} style={[hs.sub, { color: c.textSecondary, fontFamily: f.body }]}>
+          {group.description || `${group.members.length} integrantes`}
+        </Text>
+
+        <View style={[hs.stats, { backgroundColor: c.surface, borderColor: c.border }]}>
+          <View style={hs.statCol}>
+            <Text style={[hs.caps, { color: c.textMuted, fontFamily: f.monoMedium }]}>GASTO TOTAL</Text>
+            <Money amount={totalGroupSpent} size={26} />
+          </View>
+          <View style={[hs.vline, { backgroundColor: c.border }]} />
+          <View style={hs.statCol}>
+            <Text style={[hs.caps, { color: c.textMuted, fontFamily: f.monoMedium }]}>TU BALANCE</Text>
+            <Money amount={userNetBalance} size={26} color={netTone} sign />
           </View>
         </View>
 
-        <TouchableOpacity onPress={handleDeleteGroup} style={styles.deleteGroupBtn}>
-          <Text style={styles.deleteGroupText}>🗑️</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Resumen financiero del grupo */}
-      <View style={[styles.statsRow, { backgroundColor: theme.colors.surfaceSecondary }]}>
-        <View style={styles.statCol}>
-          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Gasto Total</Text>
-          <Text style={[styles.statValue, { color: theme.colors.text }]}>
-            {formatCurrency(totalGroupSpent)}
-          </Text>
-        </View>
-
-        <View style={styles.statDivider} />
-
-        <View style={styles.statCol}>
-          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Tu Balance</Text>
-          <BalanceBadge balance={userNetBalance} compact />
-        </View>
-      </View>
-
-      {/* Selector de Pestañas (Tab Navigator interno: Gastos / Balances) */}
-      <View style={[styles.tabBar, { borderBottomColor: theme.colors.border }]}>
-        <TouchableOpacity
-          onPress={() => setActiveTab('gastos')}
-          style={[
-            styles.tabButton,
-            activeTab === 'gastos' && { borderBottomColor: theme.colors.primary, borderBottomWidth: 3 },
-          ]}
-        >
-          <Text
-            style={[
-              styles.tabButtonText,
-              { color: activeTab === 'gastos' ? theme.colors.primary : theme.colors.textSecondary },
-              activeTab === 'gastos' && styles.tabButtonTextActive,
-            ]}
-          >
-            🧾 Gastos ({expenses.length})
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setActiveTab('balances')}
-          style={[
-            styles.tabButton,
-            activeTab === 'balances' && { borderBottomColor: theme.colors.primary, borderBottomWidth: 3 },
-          ]}
-        >
-          <Text
-            style={[
-              styles.tabButtonText,
-              { color: activeTab === 'balances' ? theme.colors.primary : theme.colors.textSecondary },
-              activeTab === 'balances' && styles.tabButtonTextActive,
-            ]}
-          >
-            ⚖️ Balances ({group.members.length})
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Filtros de categoría si la pestaña Gastos está activa */}
-      {activeTab === 'gastos' ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryFilterRow}>
-          <TouchableOpacity
-            onPress={() => setFilterCategory(null)}
-            style={[
-              styles.filterChip,
-              { backgroundColor: !filterCategory ? theme.colors.primary : theme.colors.surfaceSecondary },
-            ]}
-          >
-            <Text style={[styles.filterChipText, { color: !filterCategory ? '#fff' : theme.colors.text }]}>
-              Todos
-            </Text>
-          </TouchableOpacity>
-          {CATEGORY_LIST.map((cat) => {
-            const isSelected = filterCategory === cat.id;
+        {/* Selector segmentado: Gastos / Balances */}
+        <View style={[hs.segment, { backgroundColor: c.surfaceSecondary }]}>
+          {[
+            ['gastos', 'Gastos', expenses.length, 'receipt-outline'],
+            ['balances', 'Balances', group.members.length, 'people-outline'],
+          ].map(([key, label, count, icon]) => {
+            const active = activeTab === key;
             return (
               <TouchableOpacity
-                key={cat.id}
-                onPress={() => setFilterCategory(isSelected ? null : cat.id)}
+                key={key}
+                onPress={() => setActiveTab(key)}
                 style={[
-                  styles.filterChip,
-                  { backgroundColor: isSelected ? cat.color : theme.colors.surfaceSecondary },
+                  hs.segBtn,
+                  active && { backgroundColor: c.surface, borderColor: c.border },
                 ]}
               >
-                <Text style={[styles.filterChipText, { color: isSelected ? '#fff' : theme.colors.text }]}>
-                  {cat.icon} {cat.name}
+                <Ionicons name={icon} size={16} color={active ? c.text : c.textMuted} />
+                <Text style={{ color: active ? c.text : c.textMuted, fontFamily: f.bodyBold, fontSize: 13 }}>
+                  {label}
                 </Text>
+                <Text style={{ color: c.textMuted, fontFamily: f.mono, fontSize: 11 }}>{count}</Text>
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
-      ) : null}
-    </View>
-  );
+        </View>
 
-  const renderBalancesTab = () => (
-    <View style={styles.balancesContainer}>
-      <Text style={[styles.balancesSectionTitle, { color: theme.colors.textSecondary }]}>
-        Resumen de participación individual
-      </Text>
-      {group.members.map((member) => {
-        const data = memberBalances[member.id] || { paid: 0, owed: 0, net: 0 };
-        return (
-          <View
-            key={member.id}
-            style={[
-              styles.memberBalanceCard,
-              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-            ]}
-          >
-            <Image
-              source={{
-                uri:
-                  member.avatarUrl ||
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=10b981&color=fff`,
-              }}
-              style={styles.memberAvatar}
-            />
+        {/* Filtros de categoría si la pestaña Gastos está activa */}
+        {activeTab === 'gastos' ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
+            <TouchableOpacity
+              onPress={() => setFilterCategory(null)}
+              style={[
+                hs.chip,
+                {
+                  backgroundColor: !filterCategory ? c.primary : 'transparent',
+                  borderColor: !filterCategory ? c.primary : c.border,
+                },
+              ]}
+            >
+              <Text style={{ color: !filterCategory ? c.onPrimary : c.text, fontFamily: f.bodyMedium, fontSize: 13 }}>
+                Todos
+              </Text>
+            </TouchableOpacity>
+            {CATEGORY_LIST.map((cat) => {
+              const sel = filterCategory === cat.id;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  onPress={() => setFilterCategory(sel ? null : cat.id)}
+                  style={[
+                    hs.chip,
+                    { backgroundColor: sel ? cat.color : 'transparent', borderColor: sel ? cat.color : c.border },
+                  ]}
+                >
+                  <Ionicons name={cat.vectorIcon} size={14} color={sel ? '#fff' : cat.color} />
+                  <Text style={{ color: sel ? '#fff' : c.text, fontFamily: f.bodyMedium, fontSize: 13 }}>
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        ) : null}
+      </View>
+    );
+  };
 
-            <View style={styles.memberBalanceInfo}>
-              <Text style={[styles.memberName, { color: theme.colors.text }]}>
-                {member.name} {member.id === currentUser.id ? '(Tú)' : ''}
-              </Text>
-              <Text style={[styles.memberSubDetails, { color: theme.colors.textSecondary }]}>
-                Pagó: {formatCurrency(data.paid)} • Le toca: {formatCurrency(data.owed)}
-              </Text>
+  const renderBalancesTab = () => {
+    const c = theme.colors;
+    const f = theme.fonts;
+    const maxPaid = Math.max(1, ...group.members.map((m) => (memberBalances[m.id] || {}).paid || 0));
+
+    return (
+      <View style={{ paddingHorizontal: 16, paddingTop: 18 }}>
+        <Text style={[hs.caps, { color: c.textMuted, fontFamily: f.monoMedium, marginBottom: 6 }]}>
+          QUIÉN PUSO Y QUIÉN DEBE
+        </Text>
+        {group.members.map((member) => {
+          const d = memberBalances[member.id] || { paid: 0, owed: 0, net: 0 };
+          const barTone = d.net > 0.01 ? c.success : d.net < -0.01 ? c.danger : c.textMuted;
+          return (
+            <View key={member.id} style={[hs.memberRow, { borderBottomColor: c.border }]}>
+              <Avatar name={member.name} uri={member.avatarUrl} size={46} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: c.text, fontFamily: f.bodyBold, fontSize: 15 }}>
+                  {member.name}
+                  {member.id === currentUser.id ? '  (tú)' : ''}
+                </Text>
+                <View style={[hs.track, { backgroundColor: c.surfaceSecondary }]}>
+                  <View
+                    style={{
+                      width: `${Math.min(100, (d.paid / maxPaid) * 100)}%`,
+                      height: 4,
+                      borderRadius: 2,
+                      backgroundColor: barTone,
+                    }}
+                  />
+                </View>
+                <Text style={{ color: c.textSecondary, fontFamily: f.mono, fontSize: 11 }}>
+                  Pagó {formatCurrency(d.paid)} · Le toca {formatCurrency(d.owed)}
+                </Text>
+              </View>
+              <BalanceBadge balance={d.net} compact showLabel={false} />
             </View>
-
-            <BalanceBadge balance={data.net} compact />
-          </View>
-        );
-      })}
-    </View>
-  );
+          );
+        })}
+      </View>
+    );
+  };
 
   // Datos para el modal de detalle
   const payer = selectedExpense
@@ -273,7 +276,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           )}
           ListEmptyComponent={() => (
             <View style={styles.emptyExpenses}>
-              <Text style={styles.emptyEmoji}>🧾</Text>
+              <Ionicons name="receipt-outline" size={40} color={theme.colors.textMuted} />
               <Text style={[styles.emptyText, { color: theme.colors.text }]}>
                 No hay gastos registrados en esta categoría
               </Text>
@@ -304,7 +307,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               <>
                 <View style={styles.modalHeaderRow}>
                   <View style={[styles.modalCategoryBadge, { backgroundColor: categoryInfo?.bgColor }]}>
-                    <Text style={styles.modalCategoryIcon}>{categoryInfo?.icon}</Text>
+                    <Ionicons name={categoryInfo?.vectorIcon} size={16} color={categoryInfo?.color} />
                     <Text style={[styles.modalCategoryText, { color: categoryInfo?.color }]}>
                       {categoryInfo?.name}
                     </Text>
@@ -313,16 +316,19 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                     onPress={() => setDetailModalVisible(false)}
                     style={styles.modalCloseBtn}
                   >
-                    <Text style={[styles.modalCloseText, { color: theme.colors.textMuted }]}>✕</Text>
+                    <Ionicons name="close" size={22} color={theme.colors.textMuted} />
                   </TouchableOpacity>
                 </View>
 
-                <Text style={[styles.modalExpenseTitle, { color: theme.colors.text }]}>
+                <Text style={[styles.modalExpenseTitle, { color: theme.colors.text, fontFamily: theme.fonts.display }]}>
                   {selectedExpense.description}
                 </Text>
-                <Text style={[styles.modalExpenseAmount, { color: theme.colors.primary }]}>
-                  {formatCurrency(selectedExpense.amount)}
-                </Text>
+                <Money
+                  amount={selectedExpense.amount}
+                  size={36}
+                  color={theme.colors.text}
+                  style={{ marginBottom: 16 }}
+                />
 
                 <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false}>
                   {/* Pagador */}
@@ -331,7 +337,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                       Pagado por:
                     </Text>
                     <Text style={[styles.detailValue, { color: theme.colors.text }]}>
-                      👤 {payer ? payer.name : 'Alguien'} {payer?.id === currentUser.id ? '(Tú)' : ''}
+                      {payer ? payer.name : 'Alguien'} {payer?.id === currentUser.id ? '(Tú)' : ''}
                     </Text>
                   </View>
 
@@ -341,7 +347,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                       Fecha:
                     </Text>
                     <Text style={[styles.detailValue, { color: theme.colors.text }]}>
-                      📅 {new Date(selectedExpense.date).toLocaleDateString('es-PE', {
+                      {new Date(selectedExpense.date).toLocaleDateString('es-PE', {
                         day: 'numeric',
                         month: 'long',
                         year: 'numeric',
@@ -356,7 +362,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                         Ubicación:
                       </Text>
                       <Text style={[styles.detailValue, { color: theme.colors.text }]}>
-                        📍 {selectedExpense.location.address}
+                        {selectedExpense.location.address}
                       </Text>
                     </View>
                   ) : null}
@@ -373,7 +379,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                           style={[styles.splitMemberChip, { backgroundColor: theme.colors.surfaceSecondary }]}
                         >
                           <Text style={[styles.splitMemberName, { color: theme.colors.text }]}>
-                            ✓ {m.name}
+                            {m.name}
                           </Text>
                         </View>
                       ))}
@@ -401,7 +407,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                     style={[styles.deleteExpenseBtn, { backgroundColor: theme.colors.dangerBg }]}
                   >
                     <Text style={[styles.deleteExpenseBtnText, { color: theme.colors.danger }]}>
-                      🗑️ Eliminar Gasto
+                      Eliminar gasto
                     </Text>
                   </TouchableOpacity>
 
@@ -409,7 +415,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                     onPress={() => setDetailModalVisible(false)}
                     style={[styles.closeModalPrimaryBtn, { backgroundColor: theme.colors.primary }]}
                   >
-                    <Text style={styles.closeModalPrimaryBtnText}>Cerrar</Text>
+                    <Text style={[styles.closeModalPrimaryBtnText, { color: theme.colors.onPrimary }]}>Cerrar</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -418,27 +424,31 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         </View>
       </Modal>
 
-      {/* Barra de Acciones Inferior */}
+      {/* Barra de acciones inferior */}
       <View
         style={[
           styles.bottomActionBar,
-          { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border },
+          { backgroundColor: theme.colors.background, borderTopColor: theme.colors.border },
         ]}
       >
         <TouchableOpacity
           onPress={() => navigation.navigate('SettleUp', { groupId: group.id })}
-          style={[styles.actionBtnSecondary, { borderColor: theme.colors.primary }]}
+          style={[hs.btnGhost, { borderColor: theme.colors.text }]}
         >
-          <Text style={[styles.actionBtnSecondaryText, { color: theme.colors.primary }]}>
-            🤝 Liquidar
+          <Ionicons name="swap-horizontal" size={18} color={theme.colors.text} />
+          <Text style={{ color: theme.colors.text, fontFamily: theme.fonts.bodyBold, fontSize: 15 }}>
+            Liquidar
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => navigation.navigate('AddExpense', { groupId: group.id })}
-          style={[styles.actionBtnPrimary, { backgroundColor: theme.colors.primary }]}
+          style={[hs.btnSolid, { backgroundColor: theme.colors.primary }]}
         >
-          <Text style={styles.actionBtnPrimaryText}>＋ Registrar Gasto</Text>
+          <Ionicons name="add" size={20} color={theme.colors.onPrimary} />
+          <Text style={{ color: theme.colors.onPrimary, fontFamily: theme.fonts.bodyBold, fontSize: 15 }}>
+            Registrar gasto
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -774,4 +784,44 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
   },
+});
+
+// Estilos del rediseño (encabezado tipo hero, selector segmentado, filas de balance)
+const hs = StyleSheet.create({
+  hero: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16, borderBottomWidth: 1, marginBottom: 4 },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
+  ghost: { width: 44, height: 44, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  iconTile: { width: 60, height: 60, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  title: { fontSize: 34, letterSpacing: -1, lineHeight: 38 },
+  sub: { fontSize: 14, marginTop: 4, marginBottom: 16 },
+  stats: { flexDirection: 'row', borderWidth: 1, borderRadius: 12, paddingVertical: 14, marginBottom: 14 },
+  statCol: { flex: 1, paddingHorizontal: 16, gap: 4 },
+  vline: { width: 1 },
+  caps: { fontSize: 10, letterSpacing: 1.3 },
+  segment: { flexDirection: 'row', padding: 4, borderRadius: 12 },
+  segBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginRight: 8,
+  },
+  memberRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
+  track: { height: 4, borderRadius: 2, marginVertical: 6 },
+  btnGhost: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 50, borderRadius: 14, borderWidth: 1.5 },
+  btnSolid: { flex: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, height: 50, borderRadius: 14 },
 });

@@ -15,7 +15,7 @@ export class Member {
     this.name = name.trim();
     this.email = email.trim();
     this.phone = phone.trim();
-    this.avatarUrl = avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(this.name)}&background=10b981&color=fff`;
+    this.avatarUrl = avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(this.name)}&background=F5B82E&color=16140F`;
   }
 
   static fromJSON(json) {

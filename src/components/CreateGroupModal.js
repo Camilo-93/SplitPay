@@ -9,14 +9,19 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { apiService } from '../services/apiService';
+import { Avatar } from './ui/Avatar';
 
 const AVAILABLE_ICONS = ['👥', '🏢', '🏖️', '⚽', '🍕', '🚗', '🎉', '🛒', '✈️', '🎮', '🍻', '🎓'];
 
 export const CreateGroupModal = ({ visible, onClose, onSubmit }) => {
   const { theme } = useTheme();
+  const { colors: c, fonts: f } = theme;
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('👥');
@@ -31,7 +36,7 @@ export const CreateGroupModal = ({ visible, onClose, onSubmit }) => {
     setIsFetchingAvatar(true);
 
     try {
-      // Consumir API pública externa para avatar según sílabo
+      // Consumir API pública externa (RandomUser) para el avatar según sílabo
       const avatarUrl = await apiService.getRandomAvatar(memberName);
       setMembers((prev) => [
         ...prev,
@@ -48,7 +53,7 @@ export const CreateGroupModal = ({ visible, onClose, onSubmit }) => {
         {
           id: `usr_${Date.now()}`,
           name: memberName,
-          avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(memberName)}&background=10b981&color=fff`,
+          avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(memberName)}&background=F5B82E&color=16140F`,
         },
       ]);
       setMemberInput('');
@@ -83,284 +88,198 @@ export const CreateGroupModal = ({ visible, onClose, onSubmit }) => {
     onClose();
   };
 
+  const inputStyle = [
+    styles.input,
+    { backgroundColor: c.surface, color: c.text, borderColor: c.border, fontFamily: f.bodyMedium },
+  ];
+  const labelStyle = [styles.label, { color: c.textMuted, fontFamily: f.monoMedium }];
+
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <View style={[styles.overlay, { backgroundColor: theme.colors.overlay }]}>
-        <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={[styles.overlay, { backgroundColor: c.overlay }]}
+      >
+        <View style={[styles.sheet, { backgroundColor: c.background }]}>
+          {/* Encabezado */}
           <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.colors.text }]}>Nuevo Grupo de Gastos</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Text style={[styles.closeText, { color: theme.colors.textMuted }]}>✕</Text>
+            <TouchableOpacity
+              onPress={onClose}
+              accessibilityLabel="Cerrar"
+              style={[styles.ghost, { borderColor: c.border, backgroundColor: c.surface }]}
+            >
+              <Ionicons name="close" size={22} color={c.text} />
             </TouchableOpacity>
+            <Text style={[styles.title, { color: c.text, fontFamily: f.display }]}>Nuevo grupo</Text>
+            <View style={{ width: 44 }} />
           </View>
 
-          <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
-            {/* Selector de ícono */}
-            <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Ícono del grupo</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.iconsRow}>
-              {AVAILABLE_ICONS.map((icon) => (
-                <TouchableOpacity
-                  key={icon}
-                  onPress={() => setSelectedIcon(icon)}
-                  style={[
-                    styles.iconOption,
-                    selectedIcon === icon && {
-                      backgroundColor: theme.colors.primaryBg,
-                      borderColor: theme.colors.primary,
-                    },
-                  ]}
-                >
-                  <Text style={styles.iconEmoji}>{icon}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            {/* Nombre del grupo */}
-            <Text style={[styles.label, { color: theme.colors.textSecondary }]}>
-              Nombre del grupo *
-            </Text>
+          <ScrollView
+            style={styles.body}
+            contentContainerStyle={{ paddingBottom: 24 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Nombre */}
+            <Text style={labelStyle}>NOMBRE</Text>
             <TextInput
-              placeholder="Ej. Depa Universitario, Viaje a Cusco..."
-              placeholderTextColor={theme.colors.textMuted}
+              placeholder="Ej. Depa universitario, viaje a Cusco"
+              placeholderTextColor={c.textMuted}
               value={name}
               onChangeText={setName}
-              style={[
-                styles.input,
-                {
-                  backgroundColor: theme.colors.surfaceSecondary,
-                  color: theme.colors.text,
-                  borderColor: theme.colors.border,
-                },
-              ]}
+              style={inputStyle}
             />
 
             {/* Descripción */}
-            <Text style={[styles.label, { color: theme.colors.textSecondary }]}>
-              Descripción (opcional)
-            </Text>
+            <Text style={labelStyle}>DESCRIPCIÓN (OPCIONAL)</Text>
             <TextInput
-              placeholder="Ej. Gastos compartidos de fin de semana..."
-              placeholderTextColor={theme.colors.textMuted}
+              placeholder="Ej. Gastos compartidos de fin de semana"
+              placeholderTextColor={c.textMuted}
               value={description}
               onChangeText={setDescription}
-              style={[
-                styles.input,
-                {
-                  backgroundColor: theme.colors.surfaceSecondary,
-                  color: theme.colors.text,
-                  borderColor: theme.colors.border,
-                },
-              ]}
+              style={inputStyle}
             />
 
+            {/* Selector de ícono */}
+            <Text style={labelStyle}>ÍCONO DEL GRUPO</Text>
+            <View style={styles.iconsGrid}>
+              {AVAILABLE_ICONS.map((icon) => {
+                const sel = selectedIcon === icon;
+                return (
+                  <TouchableOpacity
+                    key={icon}
+                    onPress={() => setSelectedIcon(icon)}
+                    accessibilityLabel={`Ícono ${icon}`}
+                    style={[
+                      styles.iconOption,
+                      { borderColor: sel ? c.text : c.border, backgroundColor: sel ? c.primaryBg : c.surface },
+                      sel && { borderWidth: 2 },
+                    ]}
+                  >
+                    <Text style={styles.iconEmoji}>{icon}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
             {/* Integrantes */}
-            <Text style={[styles.label, { color: theme.colors.textSecondary }]}>
-              Añadir Integrantes
-            </Text>
+            <Text style={labelStyle}>INTEGRANTES · {members.length}</Text>
             <View style={styles.addMemberRow}>
               <TextInput
-                placeholder="Nombre del amigo (ej. Alejandro)"
-                placeholderTextColor={theme.colors.textMuted}
+                placeholder="Nombre del pata"
+                placeholderTextColor={c.textMuted}
                 value={memberInput}
                 onChangeText={setMemberInput}
                 onSubmitEditing={handleAddMember}
-                style={[
-                  styles.input,
-                  styles.memberInput,
-                  {
-                    backgroundColor: theme.colors.surfaceSecondary,
-                    color: theme.colors.text,
-                    borderColor: theme.colors.border,
-                  },
-                ]}
+                style={[...inputStyle, styles.memberInput]}
               />
               <TouchableOpacity
                 onPress={handleAddMember}
                 disabled={isFetchingAvatar || !memberInput.trim()}
                 style={[
                   styles.addMemberBtn,
-                  {
-                    backgroundColor: theme.colors.primary,
-                    opacity: memberInput.trim() ? 1 : 0.5,
-                  },
+                  { borderColor: c.text, opacity: memberInput.trim() ? 1 : 0.45 },
                 ]}
               >
                 {isFetchingAvatar ? (
-                  <ActivityIndicator color="#fff" size="small" />
+                  <ActivityIndicator color={c.text} size="small" />
                 ) : (
-                  <Text style={styles.addMemberBtnText}>+ Añadir</Text>
+                  <>
+                    <Ionicons name="add" size={18} color={c.text} />
+                    <Text style={{ color: c.text, fontFamily: f.bodyBold, fontSize: 14 }}>Añadir</Text>
+                  </>
                 )}
               </TouchableOpacity>
             </View>
 
-            {/* Lista de integrantes agregados */}
+            {/* Integrantes agregados */}
             {members.length > 0 ? (
               <View style={styles.membersList}>
                 {members.map((m) => (
-                  <View
-                    key={m.id}
-                    style={[styles.memberChip, { backgroundColor: theme.colors.surfaceSecondary }]}
-                  >
-                    <Text style={[styles.memberName, { color: theme.colors.text }]}>👤 {m.name}</Text>
-                    <TouchableOpacity onPress={() => handleRemoveMember(m.id)}>
-                      <Text style={[styles.removeChip, { color: theme.colors.danger }]}>✕</Text>
+                  <View key={m.id} style={[styles.memberChip, { borderColor: c.border, backgroundColor: c.surface }]}>
+                    <Avatar name={m.name} uri={m.avatarUrl} size={28} />
+                    <Text style={{ color: c.text, fontFamily: f.bodyMedium, fontSize: 13 }}>{m.name}</Text>
+                    <TouchableOpacity
+                      onPress={() => handleRemoveMember(m.id)}
+                      accessibilityLabel={`Quitar a ${m.name}`}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="close" size={16} color={c.danger} />
                     </TouchableOpacity>
                   </View>
                 ))}
               </View>
             ) : null}
+            <Text style={[styles.hint, { color: c.textMuted, fontFamily: f.mono }]}>
+              El avatar de cada integrante se genera con RandomUser.
+            </Text>
           </ScrollView>
 
-          <View style={styles.footer}>
-            <TouchableOpacity
-              onPress={onClose}
-              style={[styles.btnSecondary, { borderColor: theme.colors.border }]}
-            >
-              <Text style={[styles.btnSecondaryText, { color: theme.colors.textSecondary }]}>
-                Cancelar
-              </Text>
-            </TouchableOpacity>
-
+          <View style={[styles.footer, { borderTopColor: c.border, backgroundColor: c.background }]}>
             <TouchableOpacity
               onPress={handleCreate}
-              style={[styles.btnPrimary, { backgroundColor: theme.colors.primary }]}
+              activeOpacity={0.85}
+              style={[styles.btnPrimary, { backgroundColor: c.primary }]}
             >
-              <Text style={styles.btnPrimaryText}>Crear Grupo</Text>
+              <Text style={{ color: c.onPrimary, fontFamily: f.bodyBold, fontSize: 16 }}>Crear grupo</Text>
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 20,
-    maxHeight: '85%',
-  },
+  overlay: { flex: 1, justifyContent: 'flex-end' },
+  sheet: { height: '92%', borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
   header: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  closeBtn: {
-    padding: 6,
-  },
-  closeText: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  body: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 8,
-    marginTop: 10,
-  },
-  iconsRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
+  ghost: { width: 44, height: 44, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 20, letterSpacing: -0.4 },
+  body: { paddingHorizontal: 16 },
+  label: { fontSize: 10.5, letterSpacing: 1.4, marginTop: 18, marginBottom: 8 },
+  input: { height: 48, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 15 },
+  iconsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   iconOption: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  iconEmoji: {
-    fontSize: 22,
-  },
-  input: {
+    width: '23%',
+    height: 56,
     borderRadius: 14,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-  },
-  addMemberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  memberInput: {
-    flex: 1,
-  },
-  addMemberBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addMemberBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  membersList: {
+  iconEmoji: { fontSize: 26 },
+  addMemberRow: { flexDirection: 'row', gap: 8 },
+  memberInput: { flex: 1 },
+  addMemberBtn: {
+    minWidth: 96,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1.5,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
   },
+  membersList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   memberChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    gap: 8,
+    paddingLeft: 6,
+    paddingRight: 10,
     paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-  },
-  memberName: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  removeChip: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    paddingTop: 10,
-  },
-  btnSecondary: {
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 14,
+    borderRadius: 10,
     borderWidth: 1,
   },
-  btnSecondaryText: {
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  btnPrimary: {
-    paddingVertical: 12,
-    paddingHorizontal: 22,
-    borderRadius: 14,
-  },
-  btnPrimaryText: {
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 14,
-  },
+  hint: { fontSize: 11, marginTop: 12 },
+  footer: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, borderTopWidth: 1 },
+  btnPrimary: { height: 54, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
 });
