@@ -2,12 +2,17 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { storageService, CURRENT_USER } from '../services/storageService';
 import { notificationService } from '../services/notificationService';
 
+// Clave para notificaciones in-app en AsyncStorage
+const NOTIF_STORAGE_KEY = '@splitpay_inapp_notifications';
+
 const ExpenseContext = createContext({
   groups: [],
   expenses: [],
   currentUser: CURRENT_USER,
   isLoading: true,
   overallUserBalance: 0,
+  inAppNotifications: [],
+  unreadCount: 0,
   refreshData: async () => {},
   createGroup: async () => {},
   updateGroup: async () => {},
@@ -17,6 +22,8 @@ const ExpenseContext = createContext({
   deleteExpense: async () => {},
   settleDebt: async () => {},
   resetData: async () => {},
+  markNotificationsRead: async () => {},
+  clearNotifications: async () => {},
   getGroupById: () => null,
   getExpensesForGroup: () => [],
 });
@@ -26,6 +33,27 @@ export const ExpenseProvider = ({ children }) => {
   const [expenses, setExpenses] = useState([]);
   const [currentUser] = useState(CURRENT_USER);
   const [isLoading, setIsLoading] = useState(true);
+  const [inAppNotifications, setInAppNotifications] = useState([]);
+
+  // Helper para agregar una notificación in-app y persistirla
+  const pushNotification = useCallback(async ({ icon, title, body }) => {
+    const newNotif = {
+      id: `notif_${Date.now()}`,
+      icon,
+      title,
+      body,
+      read: false,
+      createdAt: new Date().toISOString(),
+    };
+    setInAppNotifications((prev) => {
+      const updated = [newNotif, ...prev];
+      // Persistir en AsyncStorage de forma asíncrona
+      import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
+        AsyncStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(updated)).catch(() => {});
+      });
+      return updated;
+    });
+  }, []);
 
   // Carga inicial de datos desde AsyncStorage
   const loadData = useCallback(async () => {
@@ -37,6 +65,11 @@ export const ExpenseProvider = ({ children }) => {
       ]);
       setGroups(loadedGroups || []);
       setExpenses(loadedExpenses || []);
+
+      // Cargar notificaciones in-app persistidas
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+      const notifJson = await AsyncStorage.getItem(NOTIF_STORAGE_KEY);
+      if (notifJson) setInAppNotifications(JSON.parse(notifJson));
     } catch (error) {
       console.error('[ExpenseContext] Error al cargar datos:', error);
     } finally {
@@ -169,10 +202,17 @@ export const ExpenseProvider = ({ children }) => {
       if (updated) {
         setExpenses(updated);
 
-        // Notificación local de nuevo gasto
+        // Notificación del sistema (push)
         const group = groups.find((g) => g.id === newExpense.groupId);
         const groupName = group ? group.name : 'Grupo';
         notificationService.notifyExpenseAdded(groupName, newExpense.description, `S/. ${newExpense.amount.toFixed(2)}`);
+
+        // Notificación in-app
+        pushNotification({
+          icon: '🧾',
+          title: 'Nuevo gasto registrado',
+          body: `"${newExpense.description}" · S/. ${newExpense.amount.toFixed(2)} en ${groupName}`,
+        });
 
         return newExpense;
       }
@@ -210,6 +250,25 @@ export const ExpenseProvider = ({ children }) => {
       });
       if (updated) {
         setExpenses(updated);
+
+        // Buscar nombres de miembros para la notificación
+        const group = groups.find((g) => g.id === groupId);
+        const fromMember = group?.members.find((m) => m.id === fromMemberId);
+        const toMember = group?.members.find((m) => m.id === toMemberId);
+        const fromName = fromMember?.name ?? 'Alguien';
+        const toName = toMember?.name ?? 'alguien';
+        const amountStr = `S/. ${Number(amount).toFixed(2)}`;
+
+        // Notificación del sistema (push)
+        notificationService.notifyDebtSettled(fromName, toName, amountStr, method);
+
+        // Notificación in-app
+        pushNotification({
+          icon: '✅',
+          title: '¡Deuda saldada!',
+          body: `${fromName} pagó ${amountStr} a ${toName} vía ${method}.`,
+        });
+
         return true;
       }
       return false;
@@ -238,6 +297,30 @@ export const ExpenseProvider = ({ children }) => {
     [expenses]
   );
 
+  // Marcar todas las notificaciones como leídas
+  const markNotificationsRead = useCallback(async () => {
+    setInAppNotifications((prev) => {
+      const updated = prev.map((n) => ({ ...n, read: true }));
+      import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
+        AsyncStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(updated)).catch(() => {});
+      });
+      return updated;
+    });
+  }, []);
+
+  // Limpiar todo el historial de notificaciones
+  const clearNotifications = useCallback(async () => {
+    setInAppNotifications([]);
+    const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+    await AsyncStorage.removeItem(NOTIF_STORAGE_KEY);
+  }, []);
+
+  // Conteo de notificaciones no leídas
+  const unreadCount = useMemo(
+    () => inAppNotifications.filter((n) => !n.read).length,
+    [inAppNotifications]
+  );
+
   return (
     <ExpenseContext.Provider
       value={{
@@ -246,6 +329,8 @@ export const ExpenseProvider = ({ children }) => {
         currentUser,
         isLoading,
         overallUserBalance,
+        inAppNotifications,
+        unreadCount,
         refreshData: loadData,
         createGroup,
         updateGroup,
@@ -255,6 +340,8 @@ export const ExpenseProvider = ({ children }) => {
         deleteExpense,
         settleDebt,
         resetData,
+        markNotificationsRead,
+        clearNotifications,
         getGroupById,
         getExpensesForGroup,
       }}

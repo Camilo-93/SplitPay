@@ -80,4 +80,14 @@ export const notificationService = {
       `Se agregó "${expenseConcept}" (${amount}) en el grupo "${groupName}".`
     );
   },
+
+  /**
+   * Notificación cuando se salda una deuda
+   */
+  async notifyDebtSettled(fromName, toName, amount, method) {
+    return this.scheduleLocalNotification(
+      '✅ Deuda saldada',
+      `${fromName} pagó ${amount} a ${toName} vía ${method}. ¡Cuentas al día!`
+    );
+  },
 };
