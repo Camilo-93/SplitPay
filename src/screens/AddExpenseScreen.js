@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import { Accelerometer } from 'expo-sensors';
 import { useTheme } from '../context/ThemeContext';
 import { useExpenseContext } from '../context/ExpenseContext';
 import { CATEGORY_LIST } from '../utils/categories';
@@ -40,6 +41,37 @@ export const AddExpenseScreen = ({ route, navigation }) => {
   const [locationData, setLocationData] = useState(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [shakeBannerVisible, setShakeBannerVisible] = useState(false);
+  const lastShakeTime = useRef(0);
+
+  // Sensor Acelerómetro: "Shake to Split" (Agitar para dividir entre todos los miembros)
+  useEffect(() => {
+    let subscription = null;
+    try {
+      Accelerometer.setUpdateInterval(150);
+      subscription = Accelerometer.addListener(({ x, y, z }) => {
+        const acceleration = Math.sqrt(x * x + y * y + z * z);
+        // Un valor > 2.2 indica una sacudida deliberada del teléfono
+        const now = Date.now();
+        if (acceleration > 2.2 && now - lastShakeTime.current > 1500) {
+          lastShakeTime.current = now;
+          if (group && group.members) {
+            setSplitWithIds(group.members.map((m) => m.id));
+            setShakeBannerVisible(true);
+            setTimeout(() => setShakeBannerVisible(false), 2500);
+          }
+        }
+      });
+    } catch (err) {
+      console.warn('[AddExpenseScreen] Acelerómetro no soportado en esta plataforma:', err);
+    }
+
+    return () => {
+      if (subscription) {
+        subscription.remove();
+      }
+    };
+  }, [group]);
 
   if (!group) {
     return (
@@ -361,15 +393,32 @@ export const AddExpenseScreen = ({ route, navigation }) => {
 
         {/* Dividir entre quiénes (Multi-select) */}
         <View style={styles.splitHeaderRow}>
-          <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary, marginBottom: 0 }]}>
-            Dividir entre ({splitCount} pers.)
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary, marginBottom: 0 }]}>
+              Dividir entre ({splitCount} pers.)
+            </Text>
+            <View style={[styles.shakeTag, { backgroundColor: theme.colors.surfaceSecondary }]}>
+              <Text style={[styles.shakeTagText, { color: theme.colors.textMuted, fontFamily: theme.fonts.monoMedium }]}>
+                📱 Agita para dividir
+              </Text>
+            </View>
+          </View>
           <TouchableOpacity onPress={handleSelectAllParticipants}>
             <Text style={[styles.selectAllLink, { color: theme.colors.primary }]}>
               {splitWithIds.length === group.members.length ? 'Solo pagador' : 'Todos'}
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Feedback visual cuando se detecta el Shake */}
+        {shakeBannerVisible && (
+          <View style={[styles.shakeToast, { backgroundColor: theme.colors.primary }]}>
+            <Ionicons name="phone-portrait-outline" size={18} color={theme.colors.onPrimary} />
+            <Text style={[styles.shakeToastText, { color: theme.colors.onPrimary, fontFamily: theme.fonts.bodyBold }]}>
+              ¡Acelerómetro detectado! Dividiendo entre todos.
+            </Text>
+          </View>
+        )}
 
         <View style={styles.participantsList}>
           {group.members.map((member) => {
@@ -729,6 +778,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     marginTop: 40,
+  },
+  shakeTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  shakeTagText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  shakeToast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  shakeToastText: {
+    fontSize: 12,
   },
 });
 
